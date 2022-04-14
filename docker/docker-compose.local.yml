@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  media:
+    hostname: media.excell.docker
+    container_name: excell-media
+    #image: excell_app:v1
+    build:
+      context: ./../
+      dockerfile: ./docker/excell-media-local.dockerfile
+      args:
+        ENV: local
+    ports:
+      - 3027:8080
+    volumes:
+      - "./../app/media:/app/code"
+      - "./../../media:/media"
+      - "./../../tmp:/app/tmp"
+      - "./../../logs:/app/logs"
+      - "./../docker/env/app-local.env:/app/code/.env"
+    networks:
+      excell:
+        ipv4_address: 172.1.0.10
+    privileged: true
+
+networks:
+  excell:
+    external: false
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.1.0.0/16
+          gateway: 172.1.0.1
