@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -46,6 +48,7 @@ func UploadImageControllerHandle(responseWriter http.ResponseWriter, webRequest 
 	entityId := webRequest.FormValue("entity_id")
 	entityName := webRequest.FormValue("entity_name")
 	imageClass := webRequest.FormValue("image_class")
+	parentId := webRequest.FormValue("parent_id")
 
 	if userId == "" || entityId == "" || entityName == "" || imageClass == "" {
 		http.Error(responseWriter, "There was an error parsing the request: userId="+userId+"; entityId="+entityId+"; entityName="+entityName+"; imageClass="+imageClass+";", http.StatusBadRequest)
@@ -92,6 +95,7 @@ func UploadImageControllerHandle(responseWriter http.ResponseWriter, webRequest 
 	fileThumbnail := fmt.Sprintf(targetThumbDirectory+"/%s%s", "thumb_"+uuid.String(), filepath.Ext(fileHeader.Filename))
 
 	dst, err := os.Create(fileName)
+
 	if err != nil {
 		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
 		return
@@ -133,8 +137,11 @@ func UploadImageControllerHandle(responseWriter http.ResponseWriter, webRequest 
 		return
 	}
 
+	imageCndName := buildCndNameFromFileName(fileName)
+	imageCndThumbnail := buildCndNameFromFileName(fileThumbnail)
+
 	createImageThumbnail(dst.Name(), fileThumbnail)
-	image, err := insertImageRecord(user, fileName, fileThumbnail, contentType)
+	image, err := insertImageRecord(user, fileName, imageCndName, imageCndThumbnail, entityId, entityName, contentType, imageClass, parentId)
 
 	if err != nil {
 		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
@@ -143,12 +150,13 @@ func UploadImageControllerHandle(responseWriter http.ResponseWriter, webRequest 
 
 	type ReturnImage struct {
 		Image     string `json:"image"`
+		Thumb     string `json:"thumb"`
 		ImageId   int    `json:"image_id"`
 		Type      string `json:"type"`
 		CompanyId string `json:"company_id"`
 	}
 
-	imageData := ReturnImage{Image: fileName, ImageId: image.ImageId, Type: contentType, CompanyId: fmt.Sprint(user.CompanyId)}
+	imageData := ReturnImage{Image: imageCndName, Thumb: imageCndThumbnail, ImageId: image.ImageId, Type: contentType, CompanyId: fmt.Sprint(user.CompanyId)}
 
 	healthCheck := helper.TransactionResult{Success: true, Message: "image registered", Data: imageData}
 	helper.JsonReturn(healthCheck, responseWriter)
@@ -290,7 +298,11 @@ func calculateResizedDimension(sideA uint, sideB uint, imageDimension uint) uint
 	return uint((float32(imageDimension) / float32(sideA)) * float32(sideB))
 }
 
-func insertImageRecord(user *dtos.User, fileName, fileThumbnail, contentType string) (*dtos.Image, error) {
+func buildCndNameFromFileName(name string) string {
+	return strings.Replace(name, "/media", "/cdn", -1)
+}
+
+func insertImageRecord(user *dtos.User, fileName string, cndName string, cndThumbnail string, entityId string, entityName string, contentType string, imageClass string, parentId string) (*dtos.Image, error) {
 
 	imagick.Initialize()
 	defer imagick.Terminate()
@@ -307,15 +319,22 @@ func insertImageRecord(user *dtos.User, fileName, fileThumbnail, contentType str
 
 	images := dtos.Images{}
 
+	newEntityId, _ := strconv.Atoi(entityId)
+	companyId := strconv.Itoa(user.CompanyId)
+	newParentIntId, _ := strconv.Atoi(parentId)
+	newParentId := helper.NullInt{Value: newParentIntId, Valid: true}
+
 	imageModel := dtos.Image{}
 	imageModel.UserId = user.UserId
-	imageModel.CompanyId = user.CompanyId
-	imageModel.EntityId = user.CompanyId
-	imageModel.EntityName = user.FirstName
+	imageModel.ParentId = newParentId
+	imageModel.CompanyId = companyId
+	imageModel.EntityId = newEntityId
+	imageModel.EntityName = entityName
+	imageModel.ImageClass = imageClass
 	imageModel.Type = contentType
-	imageModel.Title = user.FirstName
-	imageModel.Url = fileName
-	imageModel.Thumb = fileThumbnail
+	imageModel.Title = fileName
+	imageModel.Url = cndName
+	imageModel.Thumb = cndThumbnail
 	imageModel.Width = int(originalWidth)
 	imageModel.Height = int(originalHeight)
 	imageModel.CreatedBy = user.UserId

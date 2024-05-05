@@ -70,7 +70,8 @@ func (images *Images) getConnection() db.Connection {
 func (images *Images) assignInterfaceModel(model map[string]interface{}) *Image {
 	returnModel := &Image{}
 	returnModel.ImageId = helper.CastAsNullableInt(model["image_id"])
-	returnModel.CompanyId = helper.CastAsNullableInt(model["company_id"])
+	returnModel.ParentId = helper.CastAsIntWithNull(model["parent_id"])
+	returnModel.CompanyId = helper.CastAsNullableString(model["company_id"])
 	returnModel.UserId = helper.CastAsNullableInt(model["user_id"])
 	returnModel.EntityId = helper.CastAsNullableInt(model["entity_id"])
 	returnModel.EntityName = helper.CastAsNullableString(model["entity_name"])
@@ -91,7 +92,8 @@ func (images *Images) assignInterfaceModel(model map[string]interface{}) *Image 
 
 type Image struct {
 	ImageId     int             `field:"image_id"`
-	CompanyId   int             `field:"company_id"`
+	ParentId    helper.NullInt  `field:"parent_id"`
+	CompanyId   string          `field:"company_id"`
 	UserId      int             `field:"user_id"`
 	EntityId    int             `field:"entity_id"`
 	EntityName  string          `field:"entity_name"`

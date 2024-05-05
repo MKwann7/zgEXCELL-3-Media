@@ -1,4 +1,4 @@
-FROM golang:1.18-stretch
+FROM golang:1.18
 
 # install build essentials
 RUN apt-get update && \

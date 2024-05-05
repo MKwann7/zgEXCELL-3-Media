@@ -17,6 +17,17 @@ func CastAsNullableInt(integerInterface interface{}) int {
 	return int(integer.Int32)
 }
 
+func CastAsIntWithNull(integerInterface interface{}) NullInt {
+
+	integer, err := integerInterface.(*sql.NullInt32)
+
+	if err != true || integer.Valid == false {
+		return NullInt{Value: -1, Valid: false}
+	}
+
+	return NullInt{Value: int(integer.Int32), Valid: true}
+}
+
 func CastAsNullableString(stringValueInterface interface{}) string {
 
 	stringValue, err := stringValueInterface.(*sql.NullString)
@@ -68,5 +79,11 @@ func CastAsNullableUuid(uuidDataInterface interface{}) NullUuid {
 
 type NullUuid struct {
 	Value uuid.UUID
+	Valid bool
+}
+
+
+type NullInt struct {
+	Value int
 	Valid bool
 }

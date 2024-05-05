@@ -9,6 +9,10 @@ import (
 	"log"
 	"reflect"
 	"strings"
+	"strconv"
+	"io"
+	"os"
+
 )
 
 func MysqlGetWhere(connection Connection, whereClause string, sort string, limit int) ([]map[string]interface{}, error) {
@@ -142,6 +146,15 @@ func buildValuesFromModel(model []SqlExecModel) string {
 			case "helper.NullTime":
 				currDateTime := currFieldModel.Value.Interface().(helper.NullTime)
 				currType = "\"" + currDateTime.Value.Format("2006-01-02 03:04:05") + "\""
+				break
+			case "helper.NullInt":
+				currNullableInt := currFieldModel.Value.Interface().(helper.NullInt)
+				if currNullableInt.Valid == false {
+				    currType = "null"
+				} else {
+				    currType = "\"" +   strconv.Itoa(currNullableInt.Value) + "\""
+				}
+				break
 			}
 			break
 		default:
@@ -154,6 +167,8 @@ func buildValuesFromModel(model []SqlExecModel) string {
 				}
 			}
 		}
+
+		io.WriteString(os.Stdout, currFieldModel.Field + " " + currType)
 
 		modelFields = append(modelFields, currType)
 	}
